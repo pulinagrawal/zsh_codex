@@ -54,9 +54,14 @@ class OpenAIClient(BaseClient):
             model=self.config["model"],
             messages=[
                 {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": "# list all files with all attributes in current folder"},
+                {"role": "assistant", "content": "ls -alhi"},
+                {"role": "user", "content": "# go one directory up"},
+                {"role": "assistant", "content": "cd .."},
                 {"role": "user", "content": full_command},
             ],
-            temperature=float(self.config.get("temperature", 1.0)),
+
+            temperature=float(self.config.get("temperature", 0.0)),
         )
         return response.choices[0].message.content
 
@@ -87,9 +92,25 @@ class GoogleGenAIClient(BaseClient):
         self.model = genai.GenerativeModel(self.config["model"])
 
     def get_completion(self, full_command: str) -> str:
-        chat = self.model.start_chat(history=[])
-        prompt = f"{self.system_prompt}\n\n{full_command}"
-        response = chat.send_message(prompt)
+        chat = self.model.start_chat(history=[
+            {
+                "role": "user",
+                "parts": [f"{self.system_prompt}\n\n# list all files with all attributes in current folder"]
+            },
+            {
+                "role": "model", 
+                "parts": ["ls -alhi"]
+            },
+            {
+                "role": "user",
+                "parts": ["# go one directory up"]
+            },
+            {
+                "role": "model",
+                "parts": ["cd .."]
+            }
+        ])
+        response = chat.send_message(full_command)
         return response.text
 
 
@@ -125,9 +146,13 @@ class GroqClient(BaseClient):
             model=self.config["model"],
             messages=[
                 {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": "# list all files with all attributes in current folder"},
+                {"role": "assistant", "content": "ls -alhi"},
+                {"role": "user", "content": "# go one directory up"},
+                {"role": "assistant", "content": "cd .."},
                 {"role": "user", "content": full_command},
             ],
-            temperature=float(self.config.get("temperature", 1.0)),
+            temperature=float(self.config.get("temperature", 0.0)),
         )
         return response.choices[0].message.content
 
@@ -164,9 +189,13 @@ class MistralClient(BaseClient):
             model=self.config["model"],
             messages=[
                 {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": "# list all files with all attributes in current folder"},
+                {"role": "assistant", "content": "ls -alhi"},
+                {"role": "user", "content": "# go one directory up"},
+                {"role": "assistant", "content": "cd .."},
                 {"role": "user", "content": full_command},
             ],
-            temperature=float(self.config.get("temperature", 1.0)),
+            temperature=float(self.config.get("temperature", 0.0)),
         )
         return response.choices[0].message.content
 
@@ -213,6 +242,10 @@ class AmazonBedrock(BaseClient):
         import json
 
         messages = [
+            {"role": "user", "content": "# list all files with all attributes in current folder"},
+            {"role": "assistant", "content": "ls -alhi"},
+            {"role": "user", "content": "# go one directory up"},
+            {"role": "assistant", "content": "cd .."},
             {"role": "user", "content": full_command}
         ]
 
@@ -223,7 +256,7 @@ class AmazonBedrock(BaseClient):
                 "max_tokens": 1000,
                 "system": self.system_prompt,
                 "messages": messages,
-                "temperature": float(self.config.get("temperature", 1.0))
+                "temperature": float(self.config.get("temperature", 0.0))
             }
         else:
             raise ValueError(f"Unsupported model: {self.config['model']}")
