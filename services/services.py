@@ -270,9 +270,60 @@ class AmazonBedrock(BaseClient):
         return response_body["content"][0]["text"]
 
 
+class OllamaClient(BaseClient):
+    """
+    config keys:
+        - api_type="ollama"
+        - base_url (optional): defaults to "http://localhost:11434"
+        - model (optional): defaults to "llama3.2" or environment variable OLLAMA_DEFAULT_MODEL
+        - temperature (optional): defaults to 1.0.
+    """
+
+    api_type = "ollama"
+    default_model = os.getenv("OLLAMA_DEFAULT_MODEL", "llama3.2")
+
+    def __init__(self, config: dict):
+        try:
+            import ollama
+        except ImportError:
+            print(
+                "Ollama library is not installed. Please install it using 'pip install ollama'"
+            )
+            sys.exit(1)
+
+        self.config = config
+        self.config["model"] = self.config.get("model", self.default_model)
+        
+        # Create ollama client with custom host if specified
+        if "base_url" in self.config:
+            self.client = ollama.Client(host=self.config["base_url"])
+        else:
+            self.client = ollama.Client()
+
+    def get_completion(self, full_command: str) -> str:
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": "# list all files with all attributes in current folder"},
+            {"role": "assistant", "content": "ls -alhi"},
+            {"role": "user", "content": "# go one directory up"},
+            {"role": "assistant", "content": "cd .."},
+            {"role": "user", "content": full_command}
+        ]
+        
+        response = self.client.chat(
+            model=self.config["model"],
+            messages=messages,
+            options={
+                "temperature": float(self.config.get("temperature", 0.0))
+            },
+            think=True
+        )
+        
+        return response["message"]["content"]
+
 
 class ClientFactory:
-    api_types = [OpenAIClient.api_type, GoogleGenAIClient.api_type, GroqClient.api_type, MistralClient.api_type, AmazonBedrock.api_type]
+    api_types = [OpenAIClient.api_type, GoogleGenAIClient.api_type, GroqClient.api_type, MistralClient.api_type, AmazonBedrock.api_type, OllamaClient.api_type]
 
     @classmethod
     def create(cls):
@@ -296,6 +347,8 @@ class ClientFactory:
                 return MistralClient(config)
             case AmazonBedrock.api_type:
                 return AmazonBedrock(config)
+            case OllamaClient.api_type:
+                return OllamaClient(config)
             case _:
                 raise KeyError(
                     f"Specified API type {api_type} is not one of the supported services {cls.api_types}"
