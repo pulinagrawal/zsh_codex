@@ -11,7 +11,7 @@ class BaseClient(ABC):
     """Base class for all clients"""
 
     api_type: str = None
-    system_prompt = "You are a zsh shell expert, please help me complete the following command, you should only output the completed command, no need to include any other explanation. Do not put completed command in a code block."
+    system_prompt = "You are a zsh shell expert, please help me complete the following command, you should only output the completed command, do not include any explanation, comments or any other text that is not part of the command. Do not put completed command in a code block."
 
     @abstractmethod
     def get_completion(self, full_command: str) -> str:
